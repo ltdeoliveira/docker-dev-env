@@ -1,0 +1,56 @@
+version: "3.7"
+services:
+  db:
+    image: mysql:8.0.20
+    command: '--default-authentication-plugin=mysql_native_password'
+    restart: always
+    environment:
+      MYSQL_DATABASE: cats
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db-password
+    secrets:
+      - db-password
+    volumes:
+      - db-data:/var/lib/mysql
+    networks:
+      - backend-db
+  backend:
+    build: backend
+    restart: always
+    volumes:
+      - ./backend:/code
+    environment:
+      FLASK_DEBUG: 1
+      MYSQL_HOST: db
+      MYSQL_USER: root
+      MYSQL_DATABASE: cats
+    secrets:
+      - db-password
+    ports:
+      - 5000:5000
+    networks:
+      - backend-db
+      - frontend-backend
+  frontend:
+    build:
+      context: frontend
+      target: development
+    environment: 
+      - CHOKIDAR_USEPOLLING=true
+    ports:
+      - 3000:3000
+      - 35729:35729
+    volumes:
+      - ./frontend/src:/code/src
+      - /project/node_modules
+    networks:
+      - frontend-backend
+    depends_on:
+      - backend
+volumes:
+  db-data: {}
+secrets:
+  db-password:
+    file: db/password.txt
+networks:
+  backend-db: {}
+  frontend-backend: {}
